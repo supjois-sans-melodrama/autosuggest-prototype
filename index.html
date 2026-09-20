@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Flow Music — Producer Autosuggest Prototype</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --ink: #14181a;
+    --ink-soft: #5b6469;
+    --line: #e7e9ea;
+    --teal: #3f8e9e;
+    --teal-deep: #2e6c79;
+    --teal-tint: #eaf4f5;
+    --amber: #b6763a;
+    --amber-tint: #fbf1e6;
+    --chip-bg: #f2f4f4;
+    --radius: 10px;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14181a;
+      --ink: #f0f2f2;
+      --ink-soft: #a7b0b3;
+      --line: #262c2e;
+      --teal: #57aebd;
+      --teal-deep: #7fc7d3;
+      --teal-tint: #17282b;
+      --amber: #d99a5f;
+      --amber-tint: #241d15;
+      --chip-bg: #1d2224;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14181a;
+    --ink: #f0f2f2;
+    --ink-soft: #a7b0b3;
+    --line: #262c2e;
+    --teal: #57aebd;
+    --teal-deep: #7fc7d3;
+    --teal-tint: #17282b;
+    --amber: #d99a5f;
+    --amber-tint: #241d15;
+    --chip-bg: #1d2224;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    height: 100%;
+    margin: 0;
+  }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+    display: flex;
+    min-height: 100%;
+  }
+  a { color: inherit; }
+
+  /* ---------- Sidebar (decorative, mirrors the live product) ---------- */
+  .sidebar {
+    width: 220px;
+    flex: 0 0 220px;
+    border-right: 1px solid var(--line);
+    padding: 20px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 800;
+    font-size: 17px;
+    letter-spacing: -0.01em;
+  }
+  .logo .mark {
+    width: 20px; height: 20px;
+    border-radius: 5px;
+    background: var(--ink);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .logo .mark svg { width: 11px; height: 11px; fill: var(--bg); }
+  .newsession {
+    background: var(--teal);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 14px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: default;
+  }
+  .navgroup { display: flex; flex-direction: column; gap: 2px; }
+  .navitem {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 8px;
+    border-radius: 8px;
+    font-size: 14px;
+    color: var(--ink-soft);
+  }
+  .navitem.active { background: var(--chip-bg); color: var(--ink); font-weight: 600; }
+  .navitem .dot { width: 6px; }
+  .navsub { padding-left: 30px; font-size: 13px; color: var(--ink-soft); padding-top: 4px; padding-bottom: 4px; }
+  .sidebar-foot { margin-top: auto; }
+  .foot-profile { font-size: 12px; color: var(--ink-soft); }
+  .theme-toggle {
+    position: fixed;
+    top: calc(16px + env(safe-area-inset-top, 0px));
+    right: 16px;
+    z-index: 50;
+    display: flex;
+    background: var(--chip-bg);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 3px;
+    gap: 2px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+  }
+  .theme-opt {
+    border: none;
+    background: transparent;
+    color: var(--ink-soft);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 7px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .theme-opt.active { background: var(--bg); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,0.10); }
+
+  /* ---------- Main ---------- */
+  .main {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 28px 24px 60px;
+    overflow-y: auto;
+  }
+  .stage { width: 100%; max-width: 760px; }
+
+  .mode-switch {
+    display: inline-flex;
+    background: var(--chip-bg);
+    border-radius: 999px;
+    padding: 4px;
+    margin: 6px auto 34px;
+    gap: 2px;
+  }
+  .mode-switch button {
+    border: none;
+    background: transparent;
+    padding: 9px 20px;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink-soft);
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .mode-switch button.active {
+    background: var(--bg);
+    color: var(--ink);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+  }
+  .mode-switch-wrap { display:flex; justify-content:center; }
+
+  h1 {
+    text-align: center;
+    font-size: 40px;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    margin: 0 0 10px;
+  }
+  h1 .accent { color: var(--teal); }
+  .sub {
+    text-align: center;
+    color: var(--ink-soft);
+    font-size: 15px;
+    margin: 0 0 26px;
+  }
+
+  .inputbar {
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 14px 16px 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .inputbar textarea {
+    width: 100%;
+    border: none;
+    outline: none;
+    resize: none;
+    font-family: inherit;
+    font-size: 16px;
+    background: transparent;
+    color: var(--ink);
+    min-height: 28px;
+    padding: 4px 0 10px;
+  }
+  .inputbar textarea::placeholder { color: #9aa2a5; }
+  .inputbar-tools {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .tool-icons { display: flex; gap: 14px; color: var(--ink-soft); }
+  .tool-icons span { font-size: 16px; }
+  .send-btn {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    background: var(--teal-tint);
+    color: var(--teal);
+    border: none;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    cursor: default;
+  }
+
+  /* ---------- Suggestion panels ---------- */
+  .try-hint {
+    text-align: center;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    margin: 10px 0 0;
+  }
+  .try-term {
+    color: var(--teal-deep);
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .try-term:hover { text-decoration: underline; }
+
+  .panel { margin-top: 22px; }
+  .panel-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ink-soft);
+    margin: 0 0 10px 2px;
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 22px; }
+  .chip {
+    background: var(--chip-bg);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 7px 14px;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--teal-deep);
+    cursor: default;
+    user-select: none;
+  }
+
+  .plist { display: flex; flex-direction: column; gap: 8px; margin-bottom: 22px; }
+  .prow {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 14px;
+    line-height: 1.45;
+    cursor: default;
+  }
+  .prow:hover { border-color: var(--teal); background: var(--teal-tint); }
+  .prow .tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--teal-deep);
+    background: var(--teal-tint);
+    border-radius: 5px;
+    padding: 2px 6px;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+
+  .hooks { display: flex; flex-direction: column; gap: 10px; margin-bottom: 4px; }
+  .hook {
+    background: var(--amber-tint);
+    border-left: 3px solid var(--amber);
+    border-radius: 0 10px 10px 0;
+    padding: 10px 14px;
+    font-size: 13.5px;
+    white-space: pre-line;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+    color: var(--ink);
+    line-height: 1.55;
+  }
+
+  .empty-state {
+    text-align: center;
+    color: var(--ink-soft);
+    font-size: 13.5px;
+    padding: 6px 0 0;
+  }
+
+  /* ---------- Listener mode ---------- */
+  .searchbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 12px 18px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .searchbar input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 16px;
+    font-family: inherit;
+    background: transparent;
+    color: var(--ink);
+  }
+  .searchbar .icon { color: var(--ink-soft); font-size: 16px; }
+
+  .results { margin-top: 24px; }
+  .section { margin-bottom: 26px; }
+  .section-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 10px;
+  }
+  .section-head h3 { font-size: 12px; font-weight: 700; color: var(--ink-soft); margin: 0; text-transform: none; }
+  .section-head .count { font-size: 12px; color: var(--ink-soft); }
+
+  .song-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 8px;
+    border-radius: 10px;
+  }
+  .song-row:hover { background: var(--chip-bg); }
+  .thumb {
+    width: 42px; height: 42px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--teal-tint), var(--amber-tint));
+    flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+  }
+  .song-meta { min-width: 0; flex: 1; }
+  .song-title { font-size: 14.5px; font-weight: 600; }
+  .song-sub { font-size: 12.5px; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .match-badge {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--teal-deep);
+    background: var(--teal-tint);
+    border-radius: 5px;
+    padding: 2px 7px;
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+  .space-row, .creator-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 8px;
+    border-radius: 10px;
+  }
+  .space-row:hover, .creator-row:hover { background: var(--chip-bg); }
+  .space-icon, .creator-icon {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    background: var(--chip-bg);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+    flex: 0 0 auto;
+  }
+  .creator-icon { background: var(--amber-tint); }
+
+  footer.note {
+    text-align: center;
+    color: var(--ink-soft);
+    font-size: 12px;
+    margin-top: 40px;
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
+  }
+
+  @media (max-width: 720px) {
+    .sidebar { display: none; }
+    .main { padding: 20px 16px 48px; }
+    h1 { font-size: 30px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="theme-toggle" id="theme-toggle">
+  <button class="theme-opt" data-theme-choice="light">&#9728; Light</button>
+  <button class="theme-opt" data-theme-choice="dark">&#9789; Dark</button>
+</div>
+
+<aside class="sidebar">
+  <div class="logo">
+    <span class="mark"><svg viewBox="0 0 24 24"><path d="M5 3l16 9-16 9V3z"/></svg></span>
+    Flow Music
+  </div>
+  <div class="newsession">New session <span>+</span></div>
+  <div class="navgroup">
+    <div class="navitem active">Songs</div>
+    <div class="navitem">Playlists</div>
+    <div class="navsub">Mars Stage - Jul 2026</div>
+    <div class="navsub">Finding Mars</div>
+    <div class="navsub">Spanish Guitar Vibe</div>
+    <div class="navitem">Spaces</div>
+    <div class="navitem">Music videos</div>
+    <div class="navitem">Projects</div>
+    <div class="navitem">Profile</div>
+  </div>
+  <div class="sidebar-foot">
+    <div class="foot-profile">energized_by_riffs · FREE</div>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="stage">
+
+    <div class="mode-switch-wrap">
+      <div class="mode-switch">
+        <button id="tab-creator" class="active">Ask Producer</button>
+        <button id="tab-listener">Search</button>
+      </div>
+    </div>
+
+    <!-- ===================== CREATOR MODE ===================== -->
+    <section id="mode-creator">
+      <h1>Create the <span class="accent">song</span> you imagine.</h1>
+      <p class="sub">Chat like you are in a studio. Suggestions update as you type.</p>
+
+      <div class="inputbar">
+        <textarea id="creator-input" rows="1" placeholder="Ask me for a song prompt or try some of your own.."></textarea>
+        <div class="inputbar-tools">
+          <div class="tool-icons"><span>&#43;</span><span>&#9881;</span><span>&#127908;</span></div>
+          <div class="send-btn">&#8593;</div>
+        </div>
+      </div>
+      <p class="try-hint">Try: <span class="try-term">dragon rider</span> · <span class="try-term">witch</span> · <span class="try-term">space disco</span> · <span class="try-term">folk-metal</span></p>
+
+      <div class="panel">
+        <div id="creator-empty" class="empty-state">Start typing a mood, genre, or character — chips, prompts, and lyric hooks will appear here, generated live from the song catalog.</div>
+        <div id="creator-results" style="display:none;">
+          <p class="panel-title">QUICK CHIPS</p>
+          <div id="chips" class="chips"></div>
+          <p class="panel-title">PROMPT AUTOCOMPLETES</p>
+          <div id="prompts" class="plist"></div>
+          <p class="panel-title">STRUCTURE &amp; VOCAL HOOKS</p>
+          <div id="hooks" class="hooks"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== LISTENER MODE ===================== -->
+    <section id="mode-listener" style="display:none;">
+      <h1>Find your <span class="accent">next</span> listen.</h1>
+      <p class="sub">Search songs, spaces, playlists, and creators across Flow Music.</p>
+
+      <div class="searchbar">
+        <span class="icon">&#128269;</span>
+        <input id="listener-input" placeholder="Search... try 'red', 'aurelia', 'garden', 'gart', 'funk'">
+      </div>
+
+      <div class="results">
+        <div id="listener-empty" class="empty-state">Recent and suggested picks show here before you type — start typing to search live.</div>
+        <div id="listener-results" style="display:none;">
+          <div class="section">
+            <div class="section-head"><h3>Songs</h3><span id="song-count" class="count"></span></div>
+            <div id="song-results"></div>
+          </div>
+          <div class="section">
+            <div class="section-head"><h3>Spaces &amp; Playlists</h3></div>
+            <div id="space-results"></div>
+          </div>
+          <div class="section">
+            <div class="section-head"><h3>Creators</h3></div>
+            <div id="creator-results-list"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="note">Prototype of Flow Music's predictive autosuggestion engine · matching runs live in your browser against a 103-track reference catalog · nothing is sent to a server</footer>
+  </div>
+</main>
+
+<script>
+const CATALOG = [{"title": "I Remain", "genre": "Epic Cinematic Folk-Bass Fusion", "creature": "dragon and rider", "summary": "A monumental reflection on time and past mistakes, concluding with a soaring statement of survival", "prompt": "Create a song called \"nothing will change coz nothing has changed\", in a trending fusion genre. Include lines like \"10 years back i didnt know i had bigger problems\", \"7 years back, I was inspired\", \"5 years back, I thought I did something right\", \"2 years bac", "link": ""}, {"title": "Hold On", "genre": "Soulful Narrative Folk-Rock", "creature": "A weathered gardener elf ", "summary": "A soulful story about resilience, comparing human struggles to the patience required for a garden to bloom", "prompt": "create a song about April showers bringing May flowers for an elf farmer", "link": ""}, {"title": "Over Third Man", "genre": "Indie-Folk (Narrative)", "creature": "A defiant wizard batsman with elf cheering", "summary": "A lyrical tribute to a cricket match at Centurion, focusing on a batsman's unconventional and defiant shot", "prompt": "Create a song about a wizard hitting a ball over third man, which his elf friend first loved at Centurion and has seen it often these days but she loves the wizard because he was one of the first to play that shot", "link": ""}, {"title": "Total Saturation", "genre": "Folktronica", "creature": "An observer elf watching the world turn into \"Glacier Freeze\"", "summary": "A surreal exploration of a synthetic electrolyte spill that dissolves the boundaries between nature and chemistry.", "prompt": "create a song about painting on glass the pic of a leaf which leaks gatorade", "link": ""}, {"title": "Am I Thirteen Or Thirty?", "genre": "Medieval Folk-Rock", "creature": "The Wonder Kid and his Dragon", "summary": "A defiant anthem of a \"wonder kid\" who has fought many wars despite his youthful appearance.", "prompt": "Create a song where a male handsome elf with a dragon looks in a mirror and asks himself \"am I 13 or 30? Am I mistaken or are my fellow riders thinking of me as a wonder kid who can't guess their old tactics?\"", "link": ""}, {"title": "Rapid-er", "genre": "Gypsy Jazz EDM Fusion", "creature": "A frustrated flyer seeking a \"rapid-er blade\"", "summary": "A frantic, high-energy obsession with upgrading a \"sick, rotten\" broom for a faster, sharper flight.", "prompt": "Create a fusion EDM song called \"is it a wonderful life? I know not for it is not mine, my broomstick is not the fastest and my life is not wonderful until I switch to a rapid broom\" - sung by a witch with a broomstick.", "link": ""}, {"title": "You Will Never Get It", "genre": "Himalayan Folk-Trap", "creature": "A team of eleven men \"rising from the south\"", "summary": "A passionate statement about building a home and standing tall against the world from the Himalayan peaks.", "prompt": "create a song called \"you (all) will never get it\" and make it a PluggnB fusion song - make it about the plea for a new cricket stadium in Nepal. Follow-up prompt : give me some more genre options-->Himalayan Folk-Trap.\n\n\n", "link": ""}, {"title": "The Prize is Ours", "genre": "Dark Orchestral Metal / Folk Horror", "creature": "The Keeper and a Primal Hunter", "summary": "A dark tale of hunting for a \"frozen heart\" guarded by an ancient keeper with a sword of iron.", "prompt": "Create a song with male chorus vocals about werewolves waiting for a full moon to transform and find a treasure", "link": ""}, {"title": "Watering Plastic Flowers", "genre": "Americana / Texas Troubadour Folk", "creature": "A weary laborer with a \"heavy pail\"", "summary": "A stoic narrative about the futility of working hard at a \"game that is a cheat.\"", "prompt": "Genre: Alternative Folk/Americana. The Vibe: Acoustic guitar driven, building into a cathartic, foot-stomping chorus with layered group vocals.\n\u200bPrompt/Concept: \"Watering Plastic Flowers.\" Write a song about a person who faithfully tends to a garden every sing", "link": ""}, {"title": "This Song Does Not Matter", "genre": "Dreamy Trip-Hop", "creature": "A mermaid with a lead tail and drying scales", "summary": "A melancholic reflection on things that are temporary and destined to sink under the surface.", "prompt": "Give me a song with female vocal chorus - about \"This song does not matter, like most other things\" - it should picture a mermaid on the water surface", "link": ""}, {"title": "Bull's Eye", "genre": "Kindie-Rock (Children's Folk-Pop)", "creature": "A group of Elven archers with pointy ears", "summary": "A joyful \"lawn championship\" song about the precision and fun of archery at a summer resort.", "prompt": "Create a song which elf friends sing while playing a game of archery in a resort, singing hitting the bull's eye has never been more fun", "link": ""}, {"title": "this play has ended", "genre": "Dark Cabaret Punk", "creature": "An eccentric, dramatic stage performer witch", "summary": "A frantic theatrical monologue signaling the final curtain call of a performance", "prompt": "Unorthodox song structures, atmospheric synths, and a vocal delivery that blends singing with spoken-word or theatrical flair.\n\nVibe: Quirky, intellectual, and deeply expressive", "link": ""}, {"title": "It counts for me", "genre": "Math Rock / Indie Rock Fusion", "creature": "The Middleman at the gate and a quiet, weeping soul", "summary": "A stream-of-consciousness exploration of finding meaning in \"nowhere at all\" through personal grief.", "prompt": "Create a song which a phoenix sings \"i didnt go to A\", \" i didnt go to B\" and \"neither did I go to C\" but I went nowhere which counts for nothing ...it didnt matter to anyone..but it mattered to me..coz I learned to cry better and shed more tears to heal the w", "link": ""}, {"title": "Future Follower", "genre": "Sci-Fi Melodic Death / Industrial Metal", "creature": "A biomechanical cyborg (\"Biological Unit One\")", "summary": "A clinical depiction of a technological ritual where a biological entity is merged with metal to eliminate a \"virus\" and become a cold, systematic follower of a new order.", "prompt": "Create a song called \"future follower\" which is about a witch in a spaceship following what looks like a new planet which is red", "link": ""}, {"title": "She Is Sick", "genre": "Synth-pop / Electronic", "creature": "A virtual entity / AI", "summary": "The digital entity travels through the web and appears \"sick\" or glitched to humans. The song explores the allure of her virtual world and the fact that her mind is dispersed across the entire network.", "prompt": "A dark wave and synthpunk electronic track, 120 BPM. Gritty, driving basslines, cold 80s-inspired retro synths, and detached, spoken-word style electronic vocals. Melancholic yet energetic electro-clash vibe, capturing digital burnout and cynical isolation.", "link": ""}, {"title": "Wash It All Away", "genre": "Acoustic Folk-Pop", "creature": "An anonymous traveler / Escapist", "summary": "A narrator flees the debts and \"agents\" of her old life, traveling to a remote island with no luggage to let the tide wash away her past and start fresh as a \"divine stranger.\"", "prompt": "Create a song called \"So long ghosts and their agents\" in a trending fusion genre. Make it about a traveller landing in a magical island to escape from ghosts and sub-ghost agents", "link": ""}, {"title": "Easy To Read", "genre": "Pop-rock / Indie Pop", "creature": "A human narrator navigating a geometric world", "summary": " Set in a plaza of red robes and rigid black prints, the narrator feels like the \"wrong shape\" in a world of circles and squares, longing for a simple identity that is \"easy to read.\"", "prompt": "Create a song called \"a type that is easy to read\" about a crowd of people who wear different colored robes but they all have the same text \"Type Best\" - standing next to different shaped buildings", "link": ""}, {"title": "Full Of Positivity", "genre": "Alternative / Pop Rock", "creature": "A liberated elf narrator", "summary": "A celebration of pure, sensory freedom. The narrator experiences a day of fresh bread and open skies, feeling completely \"unattached\" and reduced to the simple joy of being \"just teeth and skin.\"", "prompt": "Create a song called \"full of positivity\" which an elf sings after she has eaten in the hills with a group of friends. They have tunics with the text \"no strings attached\"", "link": ""}, {"title": "A Stitch In Time", "genre": "Indie-folk / Fantasy", "creature": "A sylvan tailor for elves", "summary": "A specialized tailor sews seafoam-colored protective suits for little elves. He prays his craftsmanship is strong enough to protect them from the \"heavy water\" as they venture into the deep ocean", "prompt": "Create a song about \"A Stitch In Time\" in which an old tailor elf makes a swimsuit for kid elves who swim in an ocean", "link": ""}, {"title": "Survival of the Quickest ", "genre": "Alternative / Indie Rock", "creature": "Two human companions escaping an \"arena\"", "summary": "A high-stakes, frantic getaway where the narrator helps a friend dodge bouncers and guards to escape a stifling, competitive social scene in favor of freedom", "prompt": "Create a song called \"Survival of the Quickest\" and show a cover art of a movie set where one end of the arena has a board called \"Leave this arena\" and on the other end there is a board called \"The Ones Who Live In Victory\"", "link": ""}, {"title": "Fine By Ourselves", "genre": "Folk-Punk / Dark Cabaret", "creature": "A group of goblins and a \"Tall Girl\" (Princess)", "summary": "A group of goblins rescue a demanding dosa-crazy elf girl from a carriage wreck. They trade their own teeth for the fancy street food she demands, only for her to complain that her chutney isn't acidic enough.", "prompt": "Create a song called \"Fine By Myself\" about a group of goblins trying to raise an elf and feeding her some goblin food instead of dosa which she loves", "link": ""}, {"title": "affinity for brands - all kinds", "genre": "Sophisticated Synth-Pop", "creature": "The Modern Elf\u2014a sophisticated, supernatural being who prioritizes luxury aesthetics and \"social alchemy.\"", "summary": "The song explores the \"affinity for brands\" held by magical people, viewing luxury labels not just as status symbols, but as modern rituals and \"hexes\" used to navigate high society.", "prompt": "create a song with the lyrics including \"never blind to the affinity for brands - all kinds of them\" about the awareness of the attraction of magical people to big brands", "link": ""}, {"title": "Who Has Done It?", "genre": "Dark Cabaret / Witch House", "creature": "The Displaced Squib (A \"wannabe witch\" caught between worlds)", "summary": "A haunting, theatrical exploration of identity and magical glitching. The track follows a slightly middle aged, vulnerable woman who finds herself surrounded by eerie duplicates and \"wrong houses,\" questioning whether sh", "prompt": "Dark cabaret meets witch house, 70 BPM, minor key. Haunting female vocals with a theatrical, half-whispered delivery. Detuned music box and harpsichord over a slow trip-hop beat, with ghostly reversed reverb tails and faint choral pads. Vintage tape warble, ca", "link": ""}, {"title": "A Plastic Arc", "genre": "Indie Pop ", "creature": "narrator and a companion", "summary": "The story follows a Narrator and Companion who ditch a life of rigid rituals and \"marble halls\" for freedom in the wild. They're at odds with an Authority Figure who looks down on their simplicity, and they mention Spiri", "prompt": "Make a song about a pair of homeless wizards sitting on the street because they got kicked out of their magic school for making magic Frisbees", "link": ""}, {"title": "Low Resolution", "genre": "Glitch Hop", "creature": "elephant (design in the room)", "summary": "The track explores the clinical and surreal experience of a distorted design\u2014specifically a blurry elephant print on a ceramic cup. The production is intentionally fragmented, using digital skips and rhythmic cuts to cre", "prompt": "Create a song about a design which is blurry and is an elephant in the room. Suggest some genres which are trending", "link": ""}, {"title": "How Tall is Al?", "genre": "Psychedelic Trap", "creature": "Al, a local urban legend who is impossibly tall", "summary": "The song follows an obsessed narrator trying to solve the mystery of Al\u2019s exact height, from marking kitchen doorframes to using milk crates just to whisper to him. However, the search ends in a philosophical shift: afte", "prompt": "create a song called \"how tall is Al?\" in a genre that is rap-like but add some funny lyrics about \"it does not matter\" in the end. Give me trending genre options", "link": ""}, {"title": "Shopping with gusto", "genre": "UK Garage", "creature": "A smooth, high-fashion aficionado.", "summary": "It\u2019s a sleek, aspirational anthem centered on a high-end shopping spree. The energy is bouncy but refined, trading the glitchy chaos for a polished, expensive-sounding groove. It captures the thrill of the \"find\" and the", "prompt": "cool, can you create a song from this video? Topic is shopping - choose a suitable trending genre\n\n", "link": ""}, {"title": "Fixed", "genre": "cross between alternative rock and folk-pop", "creature": "a lady stuck in a state of intense vulnerability and waiting. Emotionally, they\u2019re desperate for validation. They aren't just waiting for a diagnosis\u2014they're waiting for an \"expert\" to give them permission to exist and tell them they aren't \"a total wreck.", "summary": "an anxious, introspective journey\u2014starting with those quiet, acoustic verses that feel very personal and mundane, before exploding into a heavy, high-energy chorus. It captures that feeling of waiting for an expert or so", "prompt": "create a song about curing sick people with anticipation of the call from the famous and the knowledgable", "link": ""}, {"title": "She watches the surface", "genre": "Fast-paced indie pop and synth-pop", "creature": "mermaid", "summary": "The heart of the song lies in its sudden comedic pivot. After two minutes of building a grand, elemental crescendo, the music drops out entirely for a deadpan spoken-word anti-climax. The mermaid\u2019s awe instantly vanishes", "prompt": "Create a song about the feeling of getting excited about rain every time there is rain. A fast-paced indie pop and synth-pop song with a quirky, energetic vibe. Features bright synthesizers, a bouncy bassline, and a rapid, almost breathless male/female vocal d", "link": ""}, {"title": "Iron Witch", "genre": "Symphonic Power Metal", "creature": "witch", "summary": "It tells the story of the \"Iron Witch,\" a mystical guardian clad in heavy plate armor, standing her ground on a sacred mountain. The lyrics capture the tension and fury as she prepares to repel foreign invaders from acro", "prompt": "Create a song called \"Generally in Battle\" about a witch who wears a warrior apparel and is preparing to fight foreign enemies from different parts of the world", "link": ""}, {"title": "I am not upset but some seeds were", "genre": "smooth bossa nova", "creature": "pickleball players", "summary": "a quirky, observational track that juxtaposes the low-stakes intensity of a pickleball match with the \"tragedy\" of a spilled jar of chia seed pudding. The song follows four players in \"coordinated polyester\" whose game c", "prompt": "create a song called \"I am not upset but some seeds were\", make it about four players playing pickleball, and nearby some chia seed pudding falls. that line \"I am not upset but some seeds were\" should be there in the song", "link": ""}, {"title": "She Was Just Tenacious and Not The Most", "genre": "chamber folk, blended with a bit of cynical indie folk", "creature": "elf who loses to a better player and a champion", "summary": "It\u2019s a weary, intellectual reflection on the gap between natural-born talent and sheer persistence. Set in a whimsical tavern, the song uses sharp, satirical lyrics to describe a card-playing elf who realizes her hard wo", "prompt": "create a song called \"She was just tenacious and not the most\" about an elf who lost a game against a better player", "link": ""}, {"title": "Drink The Salt Away", "genre": "Cozy Indie Pop", "creature": "a young witch in a barista", "summary": "the story of a young witch who uses her craft not for grand spells, but for the quiet mending of her community. Each latte is a calculated infusion\u2014dried fennel to lift heavy spirits, or a single bluebell petal to soothe", "prompt": "Song Topic : The Barista Witch\nStory Idea: A young witch opens a cozy caf\u00e9 where she uses harmless potion-brewing skills to make the perfect, mood-boosting lattes for stressed-out villagers.\nMusic Genre Prompt: Cozy Indie Pop mixed with Lo-Fi Beats, featuring ", "link": ""}, {"title": "Across the valley floor", "genre": "Upbeat Electro-Swing ", "creature": "a pair of centaurs", "summary": "Set against the backdrop of a sunlit meadow, the narrative follows a group of centaurs who choose to suspend their customary archery practice in favor of a spirited dance competition.The lyrics detail the transition from", "prompt": "Song Topic: Ballroom of the Centaurs\nStory Idea: A group of centaurs decides to ditch their traditional archery practice for a day to host a massive, high-energy dance competition in a sunlit meadow.\nMusic Genre Prompt: Upbeat Electro-Swing with a driving bras", "link": ""}, {"title": "The Dragon's Bakery", "genre": "Tropical Ska-Punk", "creature": "a dragon in a bakery", "summary": "An energetic, manic-but-joyful anthem about a friendly red dragon who uses his fire-breathing gift to run the kingdom's most popular bakery. The sound is driven by bright trumpet lines and staccato guitar upstrokes that ", "prompt": "Song Topic : The Dragon's Bakery\nStory Idea: A friendly, oversized red dragon realizes his fire-breathing talent is perfect for baking giant batches of pastries, opening the most popular bakery in the kingdom.\nMusic Genre Prompt: Happy, tropical Ska-Punk with ", "link": ""}, {"title": "Dancing in the tide", "genre": "Future Bass and Bubblegum Pop Fusion", "creature": "mermaid DJ", "summary": "This track is a high-energy underwater anthem that captures the magic of a bioluminescent secret society. It centers on the annual \"Coral Rave\" deep in the ocean, where the crushing pressure of the deep sea is transforme", "prompt": "Song Topic : Mermaid Coral Rave\nStory Idea: Deep in the ocean, a group of mermaids throws an annual bioluminescent dance party under the sea, inviting all the fish and sea turtles.\nMusic Genre Prompt: Uplifting Future Bass and Bubblegum Pop fusion, featuring b", "link": ""}, {"title": "Kings Of The Vertical Drop", "genre": "Theatrical Pop-Punk", "creature": "Elves on skateboards", "summary": "This track is a high-octane rebellion against immortality. It tells the story of woodland elves trading their harps and silk robes for enchanted oak skateboards, staging a chaotic tournament through the forest canopy jus", "prompt": "Song Topic : Elven Skateboard Derby\nStory Idea: Bored of their elegant, slow-paced lives, a group of woodland elves builds skateboards out of enchanted oak trees and holds a tournament through the forest canopy.\nMusic Genre Prompt: Sunny Pop-Punk with fast-pac", "link": ""}, {"title": "Four By Four", "genre": "Funk-infused Nu-Disco", "creature": "Centaur in a Disco", "summary": "it\u2019s a celebration of finding your rhythm\u2014literally fitting four quad skates to four hooves\u2014and sparking a movement that brings the whole mythical world together on the dance floor.", "prompt": "Song Topic : Centaur Roller Disco\nStory Idea: A centaur discovers retro roller skates and fits them onto all four hooves, starting a massive roller-disco trend across the mythical plains.\nMusic Genre Prompt: 70s Nu-Disco infused with French House, featuring a ", "link": ""}, {"title": "Total Rest", "genre": "Dream-Pop and Synthwave", "creature": "witch resting on a cozy cloud mattress", "summary": "This track tells the story of a clever witch who harvests low-hanging summer clouds to weave them into the softest mattresses ever made", "prompt": "Song Topic : The Witch\u2019s Cloud Mattress\nStory Idea: A clever witch captures fluffy, low-hanging summer clouds and weaves them into the comfiest mattresses ever made, bringing sweet dreams to the whole town.\nMusic Genre Prompt: Dream-Pop mixed with Synthwave, f", "link": ""}, {"title": "Lungs Full Of Rhythm", "genre": "blend of Folktronica and Acoustic Trap", "creature": "dragon and an elf", "summary": "the story of an unlikely fantasy duo: a tiny green dragon who lacks the ability to breathe fire but possesses a \"heart of 808s,\" and a custom steel-string-playing elf. Together, they've traded the mud of the caverns for ", "prompt": "Song Topic : Dragon and Elf Jam Session\nStory Idea: A tiny dragon who can't breathe fire but can beatbox perfectly teams up with an elf acoustic guitarist to form the ultimate street-performing duo.\nMusic Genre Prompt: Acoustic Folk-Hop (Folk guitar paired wit", "link": ""}, {"title": "Frozen Magic", "genre": "Kawaii Future Core", "creature": "An entrepreneurial mermaid", "summary": "a high-energy Kawaii Future Core track that tells the story of an underwater entrepreneur bringing a taste of winter to the deep sea. The lyrics follow a mermaid using \"magic ice\" carved from deep-sea pressure to serve t", "prompt": "Song Topic : Mermaid Ice Cream Truck\nStory Idea: An entrepreneurial mermaid uses magic ice that doesn't melt underwater to start a mobile ice cream business for reef creatures.\nMusic Genre Prompt: Kawaii Future Core, featuring fast, chirpy chiptune sounds and ", "link": ""}, {"title": "Can You Feel The Heat?", "genre": "Funky House / Nu-Disco", "creature": "ogre", "summary": "It captures the tension of fairies and elves sneaking through the mossy dark before exploding into a vibrant, neon celebration. The lyrics follow the ogre\u2019s emotional shift\u2014starting solitary and \"heavy as stone,\" then be", "prompt": "Song Topic : The Grumpy Ogre's Birthday Surprise\nStory Idea: A group of cheerful fairies and elves sneak into a grumpy ogre's swamp house to throw him a massive surprise party, instantly melting his heart.\nMusic Genre Prompt: High-energy Eurodance with a drivi", "link": ""}, {"title": "Everyone is standing up", "genre": "Symphonic Power Pop", "creature": "phoenix", "summary": "an uplifting symphonic power pop anthem that tells the story of a young phoenix finding their voice at a magical talent show. Moving away from the traditional fire and ash associated with their kind, the protagonist disc", "prompt": "Song Topic : Phoenix Talent Show\nStory Idea: A young phoenix entering a magical talent show decides to sing a song so joyful that it makes all the flowers in the arena bloom instantly.\nMusic Genre Prompt: Uplifting Symphonic Power Pop, featuring a grand orches", "link": ""}, {"title": "Silver Dust Rising", "genre": "8-Bit Chiptune mixed with Electro-Pop", "creature": "pixie", "summary": "A swarm of mischievous pixies sneaks into a human video game arcade after hours and accidentally powers up all the machines with their magic pixie dust.", "prompt": "Song Topic : Pixie Arcade Party\nStory Idea: A swarm of mischievous pixies sneaks into a human video game arcade after hours and accidentally powers up all the machines with their magic pixie dust.\nMusic Genre Prompt: 8-Bit Chiptune mixed with Electro-Pop, feat", "link": ""}, {"title": "Ten Minutes or Mine", "genre": "Surf Rock", "creature": "centaur pizza guy", "summary": "\"Ten Minutes or Mine\" tells the story of the valley's legendary centaur delivery man. Fueled by high-speed gallops and a four-hoof engine, he tears through canyons and dirt paths to ensure every pizza arrives burning hot", "prompt": "Song Topic : Centaur Pizza Delivery\nStory Idea: The fastest centaur in the valley starts a delivery service, guaranteeing hot, fresh pizza to any creature within a fifty-mile radius in under ten minutes.\nMusic Genre Prompt: Fast-paced, sunny Surf Rock with twa", "link": "https://www.flowmusic.app/song/05f8a826-06b4-4ea3-8c46-79dfd53e2093"}, {"title": "Across The Prism", "genre": "Progressive House", "creature": "pegasus", "summary": "A young pegasus who is afraid of heights overcomes their fear during a friendly race through a beautiful obstacle course made of rainbows.", "prompt": "Song Topic : Pegasus Sky Race\nStory Idea: A young pegasus who is afraid of heights overcomes their fear during a friendly race through a beautiful obstacle course made of rainbows.\nMusic Genre Prompt: Progressive House with soaring, euphoric synth leads and an", "link": ""}, {"title": "Sixteen Squares", "genre": "Celtic Glitch Hop", "creature": "Elf DJ in a forest festival", "summary": "the Elf DJ Festival to life with \"Sixteen Squares,\" a fusion of Celtic folk and heavy glitch hop. The track blends bit-crushed flutes with deep electronic drops to tell the story of a forest elf trading their harp for a ", "prompt": "Song Topic : The Elf DJ Festival\nStory Idea: An elf trades their traditional harp for a digital launchpad, hosting the biggest electronic music festival the ancient forest has ever seen.\nMusic Genre Prompt: Glitch Hop mixed with Celtic Folk (combining bagpipes", "link": ""}, {"title": "We Move As One ", "genre": " Tropical House", "creature": "mermaids synchronized in swimming", "summary": "a sun-drenched Tropical House anthem that tells the story of a mermaid pod welcoming a cruise ship with a flawlessly synchronized underwater routine. Musically, it\u2019s built on a foundation of bright steel drums and rhythm", "prompt": "Song Topic : Mermaid Synchronized Swimming\nStory Idea: A school of mermaids choreographs a complex, synchronized routine to welcome a traveling cruise ship of friendly land-dwellers.\nMusic Genre Prompt: Sparkling Tropical House with steel drums, a warm basslin", "link": ""}, {"title": "A Roof Of Quilts", "genre": "Pastoral Indie Folk", "creature": "a dragon who is feeling cold", "summary": "a heartwarming winter tale of a massive mountain dragon who finds himself shivering as the frost sets in. Instead of fear, the local villagers respond with kindness, bringing every quilt and pillow they own to his cave. ", "prompt": "Song Topic : The Dragon\u2019s Blanket Fort\nStory Idea: A giant dragon gets cold in the winter and invites the entire village to help him build the largest blanket and pillow fort in history inside his cave.\nMusic Genre Prompt: Warm, cozy Indie Folk with fingerpick", "link": ""}, {"title": "Finally, I Will Say It", "genre": "Bright Ska-Punk / Tropical Surf Rock Fusion", "creature": "A mermaid with ideas and wit", "summary": "This high-energy track centers on a pink-dreadlocked mermaid\u2019s quirky journey toward self-gratitude. Musically, it\u2019s a chaotic and sunny blend of rapid-fire conversational verses, a walking bassline, and punchy brass sec", "prompt": "The Concept: A meticulous but slow-working forest elf who spends days designing the perfect treehouse, completely missing the grand seasonal festival, only to realize self-validation is the best prize.\n\u200bSong Fusion Prompt: > \"A folk-pop track driven by upbeat ", "link": ""}, {"title": "Feel The Thunder", "genre": "Kawaii Metal/J-Pop", "creature": "witches flying", "summary": "\"Witch Rush\" tells the story of the Witch\u2019s Flying Broom Regatta, but this isn't a race to the finish line\u2014it's a high-stakes aerial dance. The lyrics follow a group of teenage witches as they \"snap the straw\" and \"break", "prompt": "Song Topic : Witch\u2019s Flying Broom Regatta\nStory Idea: Instead of racing for speed, a group of teenage witches holds a competition to see who can do the most creative, loop-de-loop aerial acrobatics on their brooms.\nMusic Genre Prompt: High-energy J-Pop/Rock wi", "link": "https://www.flowmusic.app/song/228c2c26-41fa-4f17-85ea-c02edfa3bfe8"}, {"title": "We Loud, We Proud", "genre": "Hip-Hop mixed with Funk", "creature": "gnome party", "summary": "story of a garden gnome community discovering a vintage human microphone buried beneath a massive oak tre", "prompt": "Song Topic : The Gnome Karaoke Night\nStory Idea: A community of garden gnomes unearths an old human microphone and hosts a loud, incredibly joyful karaoke night under the roots of a giant oak tree.\nMusic Genre Prompt: Funky, rhythmic Hip-Hop mixed with Funk, f", "link": ""}, {"title": "Never Breaking, Always Rising", "genre": "orchestral pop", "creature": "Griffin playing, wizard watching", "summary": "The song tracks the griffin's transition from a powerful \"beak of iron\" to a curious creature batting at translucent spheres and leaping over \"walls of light.\" It concludes with a serene image of the great predator drift", "prompt": "Song Topic : The Griffin\u2019s Great Bubble Chase\nStory Idea: A majestic griffin acts exactly like a playful kitten when an elf wizard accidentally casts a spell that fills the entire valley with giant, unbreakable soap bubbles.\nMusic Genre Prompt: Bouncy, cinemat", "link": ""}, {"title": "Sunday Market", "genre": "Cottagecore Folk-Pop", "creature": "shopkeeper witch - magic lady", "summary": "t\u2019s a bright, storybook tune about a cheerful village witch who spends her Sundays in the cobblestone square. Rather than casting dark spells, she uses her magic to bottle light into jars of glowing jam and tends to herb", "prompt": "Song Topic : The Witch Who Ran the Sunday Market\nStory: A cheerful village witch sells glowing jams and singing herbs at the weekend market, hexing only the bad weather away.\nMusic prompt: Upbeat cottagecore folk-pop, 112 BPM, fingerpicked acoustic guitar, han", "link": ""}, {"title": "How The Spirit Flies", "genre": "Cinematic Pop-Rock", "creature": "centaur running a marathon", "summary": "a triumphant anthem about a mythical journey reaching its peak. It follows the story of a runner (our centaur) transcending the physical race to find unity with a massive, cheering crowd. Musically, it builds from an atm", "prompt": "Song Topic : Centaur Marathon\nStory: A centaur enters the city marathon and gallops to the finish, high-fiving the whole crowd.\nMusic prompt: Future bass meets orchestral pop, 150 BPM, soaring strings into a big synth drop, four-on-the-floor energy, triumphant", "link": ""}, {"title": "Potions and the Margherita", "genre": "lo-fi hop hop", "creature": "witch in a delivery business", "summary": "a chill, lo-fi hip hop anthem that follows a young, independent witch running her own high-altitude delivery hustle. The story tracks her flying through the night, juggling orders of \"liquid truth\" for shady warlocks and", "prompt": "Song Topic : Potion Delivery, 3 Stars\nStory: A young witch runs a flying broom delivery service, dropping off love potions and pizza alike across town.\nMusic prompt: Lo-fi hip hop, 85 BPM, dusty piano loop, mellow boom-bap drums, vinyl crackle, soft humming, r", "link": "https://www.flowmusic.app/song/f7d94c71-db6a-4542-9c07-dec4d2fad9b6"}, {"title": "Just The Stem", "genre": "chamber pop", "creature": "elf from New Jersey", "summary": "\"Just The Stem\" tells the whimsical yet weary story of an elf traveler from New Jersey who arrives at their destination with a cold and a very practical mindset. When greeted with an elaborate lotus ceremony\u2014including de", "prompt": "Create a song where an elf traveller from US is greeted with lotus stem fried starters along with lotus petals and a lotus flower sculpture. He chooses only the stem and keeps the sculpture and the flower away for charity- and says that he and his friends like", "link": ""}, {"title": "Zero Gravity Slice", "genre": "Space Disco-Soul", "creature": "a cheerful, bubble-helmeted astronaut who turned his orbital station into the galaxy's premier weightless pizzeria", "summary": "Zero-G Slice\" is a celebratory anthem about the ultimate intergalactic hangout. The track follows an astronaut chef as he tosses dough into the velvet sky, watching sauce and toppings drift like clouds in a gravity-free ", "prompt": "Song Topic : The Zero-G Pizza Parlor\nStory Idea: An astronaut opens a pizzeria on a space station where the ingredients float freely, allowing him to spin dough in zero gravity for alien tourists.\nMusic Genre Prompt: Upbeat Space Disco with funky basslines, co", "link": ""}, {"title": "I'm the birthday girl", "genre": "Afro-pop ", "creature": "Dragon's birthday", "summary": "tells the story of the youngest dragon on the mountain hitting her 1 centennial milestone. Instead of a quiet cave gathering, she throws a massive, all-night mountain-shaking dance party. The track follows her as she com", "prompt": "Song Topic : Dragon's Birthday Bash\nStory: The youngest dragon turns 100 and the whole mountain throws an all-night dance party.\nMusic prompt: Afrobeats, 105 BPM, syncopated log-drum bass, bright guitar licks, layered vocal chants, shakers and horns, celebrato", "link": ""}, {"title": "Moving On", "genre": "gypsy jazz swing", "creature": "centaur swing band", "summary": "The Galloping Four\" tells the story of a legendary centaur swing band traveling through the meadowlands. It captures the rhythmic thrum of their hooves blending with the \"La Pompe\" guitar style as they bring virtuosic vi", "prompt": "Song Topic : The Centaur Swing Quartet\nStory: Four centaurs form a swing band and tour the meadow taverns to packed houses.\nMusic prompt: Gypsy-jazz swing, 160 BPM, fast acoustic guitar comping, upright bass, clarinet and violin solos, brushed snare, playful a", "link": ""}, {"title": "Stay in the tide", "genre": "Electronic Shoegaze and Bossa Nova Chillwave", "creature": "mermaid caretaker ", "summary": "The song tells the story of a mermaid tending to a secret, glowing underwater sanctuary. Set to a 95 BPM pulse with shimmering synth pads and gentle nylon guitar, the song captures the rhythmic, meditative process of sin", "prompt": "Song Topic : Coral Garden Lullaby\nStory: A mermaid tends a secret glowing garden and sings the baby seahorses to sleep.\nMusic prompt: Bossa nova chillwave, 95 BPM, nylon guitar, soft synth pads, gentle brush percussion, breathy vocal, dreamy and tender.\nCover ", "link": ""}, {"title": "Finally off the ground", "genre": "", "creature": "dragon's flight attempt by itself", "summary": "The track tells a touching story of resilience through the metaphor of a young dragon\u2019s first flight. It opens with an intimate, vulnerable piano melody reflecting the exhaustion of falling \"ninety-nine times.\" As the ly", "prompt": "Song Topic : First Alone Flight\nStory: A little dragon finally takes off after a hundred wobbly tries, and the whole valley cheers.\nMusic prompt: Cinematic orchestral pop, 100 BPM, swelling strings, piano, big drum builds, soaring uplifting vocal, hopeful and ", "link": "https://www.flowmusic.app/song/c2bf621a-7074-4ce6-91a4-0feda0f40511"}, {"title": "We drink the amber light", "genre": "chamber pop", "creature": "elven tea party", "summary": "It's a whimsical look into the high-stakes world of an elf's tea ceremony. Musically, it blends a sophisticated string quartet arrangement with grand, operatic vocals, making the simple act of pouring amber tea feel like", "prompt": "Song Topic : Elf Tea at Four\nStory: A fussy but lovable elf hosts the daintiest tea party, where the teapots gossip.\nMusic prompt: Baroque pop, 108 BPM, harpsichord, pizzicato strings, light flute, tidy hand percussion, whimsical vocal, charming and proper.\nCo", "link": ""}, {"title": "Mediocrity", "genre": "Narrative Folk", "creature": "elf sitting in an amusing setting and singing, playing guitar near a farm", "summary": "\"Mediocre Mostly\" is a self-aware, narrative folk anthem that finds beauty in the unpolished and the everyday. Centered around the mantra of \"a blessed path anyway,\" the lyrics follow a character (represented visually as", "prompt": "Create a song called \"mediocre mostly\" with lines like \"not an expert in most things, credits to all the experts, thank you for a blessed path anyway, mediocrity is not something that I ever chased, but you end up getting things that you do not chase too, haha", "link": ""}, {"title": "Still Counting", "genre": "ambient dreamwave", "creature": "centaur counting stars", "summary": "This track follows a gentle centaur as she makes his nightly climb to the summit of a quiet hill. Under a deep indigo sky, she meticulously names new constellations, drawing lines between the stars to map out the cosmic ", "prompt": "Song Topic : The Centaur Who Counts Stars\nStory: Each night a gentle centaur climbs the hill to name new constellations.\nMusic prompt: Ambient dreamwave, 90 BPM, glassy synth pads, soft pulse bass, twinkling bells, whispered vocal, serene and cosmic.\nCover pro", "link": ""}, {"title": "Choose Your Favorite", "genre": "Children's Folk", "creature": "5 okras decorated as fingers", "summary": "Choose Your Favourite\" is a playful and educational nursery rhyme that reimagines five pieces of okra as distinct, hand-painted characters arranged like the fingers on a palm. Each veggie has its own artistic personality", "prompt": "create a song called \"choose your favourite\" where 5 okra pieces are described as painted veggies - number them 1, 2, 3, 4 and 5 and they are arranged in the shape of a palm. Make each distinct but the middle okra has to be the most special", "link": ""}, {"title": "A heavy archive", "genre": "Literary Indie Folk-Rock and Atmospheric Dream-Pop", "creature": "mermaid and elf", "summary": "The story follows a mermaid who has engineered a \"cedar-substrate\" paper that can withstand the crushing pressures of the deep ocean and record underwater vibrations. She swims through the dark, high-pressure trenches, c", "prompt": "create a song called \"hey bro, I invented special paper\" which a mermaid sings while swimming and reading a paper inside the water. she comes out of the water and throws it to her elf brother who signs his name on it and says \"thank you for your invention\"", "link": ""}, {"title": "Silent For Too Long", "genre": "Cinematic Trip-Hop, Noir-Pop", "creature": "witch in last bench", "summary": "a witch sat in the last bench in a conference and shut her mouth with a mask, and after all these years she wants to share her opinions but nobody cares now", "prompt": "Create a song called \"silent for too long\" about a witch who sat in the last bench in a conference and shut her mouth with a mask. And add lines like \" i never spoke much, and now nobody hears me\"", "link": ""}, {"title": "A Social Hippogriff", "genre": "Indie Rock, Baroque Art-Pop", "creature": "hippogriff bonding with giants and dragons", "summary": "\"Social Hippogriff\" is a quietly defiant anthem about being a hybrid creature who refuses to be boxed into anyone's social categories. While a status-anxious \"you\" walks the \"social wire\" of polite society \u2014 starched lin", "prompt": "", "link": ""}, {"title": "Kings of the Cul-de-sac", "genre": "Rockabilly with a gritty Psychobilly edge", "creature": "witch's restless cats", "summary": "Kings of the Cul-de-sac\" tells the story of a witch's three restless cats\u2014Ink, Barnaby, and Scratch\u2014who trade their boring lives on the rug for a jagged, high-energy rockabilly career. From stealing picks in the kitchen ", "prompt": "Song Topic : The Witch's Cat Band\nStory: A witch's three cats start a rockabilly band and become local legends.\nMusic prompt: Rockabilly, 145 BPM, slap upright bass, twangy guitar, snappy snare, playful \"meow\" backing vocals, retro and rowdy.\nCover prompt: Thr", "link": ""}, {"title": "Number Eighty-Four", "genre": "Garage-Surf Rock with a Post-Punk Revival edge", "creature": "mermaid surfing", "summary": "\"Number Eighty-Four\" tells the surreal story of a mermaid who unexpectedly joins a high-stakes human surfing competition. As the crowd watches in stunned silence, she bypasses the standard gear for her own natural scales", "prompt": "Song Topic : Mermaid Surf Open\nStory: A mermaid enters the human surf contest and rides the biggest wave of the day.\nMusic prompt: Surf rock with synth, 150 BPM, reverb-drenched guitar, driving tom beat, organ stabs, energetic chant, sunny and wild.\nCover prom", "link": ""}, {"title": "The Water Heals You", "genre": "City Pop, blended with a mellow Lo-fi R&B", "creature": "dragon", "summary": "the story of a dragon who transforms his volcanic home into a cozy, lantern-lit spa where weary travelers can soak under the stars. Musically, it\u2019s a smooth City Pop track driven by a slinky bassline, velvet-toned vocals", "prompt": "Song Topic : Dragon Hot Springs\nStory: A dragon turns his volcano into the coziest spa, where everyone soaks under the stars.\nMusic prompt: City pop / lo-fi groove, 92 BPM, smooth electric piano, slinky bass, soft synth horns, relaxed vocal, mellow and luxurio", "link": ""}, {"title": "Lift It Up", "genre": "Bollywood-EDM fusion", "creature": "elves and humans", "summary": "The story follows a gathering of elves and humans on a riverbank, marking the end of winter. It builds from an atmospheric verse focused on the anticipation of lighting the lanterns into an explosive, celebratory drop. T", "prompt": "Song Topic : Festival of a Thousand Lanterns\nStory: Elves and Humans light floating lanterns across the river to welcome spring, dancing all night.\nMusic prompt: Bollywood-EDM fusion, 130 BPM, dhol and tabla over festival synths, sitar lead, big celebratory dr", "link": "https://www.flowmusic.app/song/9c2a25e1-e16d-404f-8d73-62bf66b891cb"}, {"title": "Not Beneath", "genre": "Melodic Future Bass", "creature": "mermaid who just got wings", "summary": "The song tells a powerful story of liberation and self-actualization. The narrator has emerged from a dark \"abyss\" and now finds themselves in a state of elevated detachment\u2014not too far gone, but just high enough to be u", "prompt": "Melodic future bass, emotional EDM, soaring vocals, atmospheric intro, uplifting synth drops, energetic yet reflective, crisp modern production.", "link": ""}, {"title": "Inglorious Stones", "genre": "Folk Rock", "creature": "man - deep introspection", "summary": "\"Inglorious Stones\" is a reflective narrative about a man revisiting a boundary ridge and a garden wall, using the metaphor of unrefined, \"inglorious\" stones to explore the futility of trying to wall off the world. It\u2019s ", "prompt": "create a song with the lines \"inglorious..fill in the blank, choose a noun - singular or plural, and it is not the name of a movie, although it can be, if you insist\". extend to add suitable lines", "link": ""}, {"title": "Boba Spell", "genre": "K-pop, teen pop", "creature": "witch in boba shop", "summary": "\"Boba Spell\" tells the story of a stylish young witch running a modern bubble tea shop where magic is served in every cup. The lyrics follow the ritual of mixing destiny into sweet syrups, culminating in a high-energy ch", "prompt": "Song Topic :  Boba Spells\nStory: A trendy young witch opens a bubble-tea shop where every drink grants a tiny lucky charm.\nMusic prompt: K-pop, 118 BPM, bright synth plucks, punchy 808s, catchy pre-chorus, layered harmonies, sweet and bubbly.\nCover prompt: Cut", "link": ""}, {"title": "Four Beat Gait", "genre": "Organic Folktronica", "creature": "centaurs", "summary": "The song captures the transition of the seasons\u2014celebrating the harvest with heavy stomps and a relentless, driving gait", "prompt": "Song Topic : Harvest Hoedown\nStory: Centaurs throw the autumn harvest dance, stomping out a rhythm that shakes the meadow.\nMusic prompt: Bluegrass-electronic fusion, 135 BPM, banjo and fiddle over a four-on-the-floor beat, foot stomps, glitchy drops, group hol", "link": "https://www.flowmusic.app/song/9ab3a59a-e932-4169-84c2-1ba731fdb1cf"}, {"title": "Burn The Floor", "genre": "Latin house / reggaeton fusion", "creature": "dragons dancing on the street", "summary": "an urban dance anthem centered on a trio of small but legendary dragons who dominate the kingdom's street-dance scene", "prompt": "Song Topic : Dragon Dance Crew\nStory: A trio of small dragons becomes the hottest street-dance crew in the kingdom.\nMusic prompt: Latin house / reggaeton fusion, 100 BPM, dembow rhythm, brass hits, bouncy piano, catchy Spanish-style hook, hot and danceable.\nCo", "link": ""}, {"title": "Old For Most Things", "genre": "Narrative Observational Folk (with an Americana/Blues variation)", "creature": "a weathered wizard", "summary": "\"Practical Difficulties\" is a weary but dignified meditation on aging. It contrasts the youthful energy of the past\u2014running for the wind and carrying heavy rucksacks\u2014with the humble, physical realities of the present, li", "prompt": "Create a song called \"old and veteran-like feel\", with a theme of \"old for most things\", with lines like \"the practical difficulties are not visible until I live them\".\n\"A charming cartoon illustration of a wizard (or elf) with shoulder-length brownish-gold ha", "link": ""}, {"title": "Weird Scripts", "genre": "", "creature": "dragon, elf, mermaid", "summary": "", "prompt": "Create a song along the theme of \"The movie may not get the story you want always, do not write weird scripts\", it should have those lines. Let the characters in it be a dragon, elf or a mermaid, generate cartoon style cover art", "link": ""}, {"title": "Watch The Orchard Rising", "genre": "Alternative Pop-Electronic (with Indie Dance-Rock influences", "creature": "dragon", "summary": "he whimsical story of a dragon undergoing a personal and environmental transformation. Instead of destruction, the dragon uses its power for productivity\u2014burying \"trash bags\" of negative past speech as organic fertilizer", "prompt": "create a song called \"end of abusive language\", and make it about a dragon burying trash bags as manure, and burning some wood to create an orchard. generate cartoon and vector style cover art", "link": ""}, {"title": "Stone Yields", "genre": "Indie Folk-Hop", "creature": "dragon and elf", "summary": "\"Stone Yields\" tells the story of an elf\u2019s twenty-six-year journey to conquer a blinding, sun-drenched snow peak. It\u2019s a narrative of pure dedication, as the elf carries a young dragon whose wings haven't yet learned to ", "prompt": "Create a song called \"summer of 26\" and make it about patience, dedication and hard work of an elf to climb a snow mountain in bright sunlight, along with a small baby dragon which doesn't know how to fly. Create a cartoon style cover for this song called \"sum", "link": ""}, {"title": "Here To Fly With You", "genre": "Folk-Rock ", "creature": "elf", "summary": "This specific version of the song, \"Here To Fly With You,\" centers on the emotional breakthrough of leaving a desolate island life behind. It starts with the heavy monotony of \"tide at my heels\" and survival prayers, but", "prompt": "Create a song called \"copy and save\" about a woman being pessimistic, after being stuck in an island. However a dragon flies to her and says \"no need to copy or laze, I am here to fly with you\". Create cartoon style cover art to depict this scene", "link": ""}, {"title": "Weightless", "genre": "", "creature": "", "summary": "", "prompt": "create a song along the theme of \"extra vision\" where a group of elves buy AR/VR glasses and watch an entertainment reel or short video inside the glasses. they get transferred into an alternate world in space", "link": ""}, {"title": "The Circle Knows", "genre": "Neurotic Electro-Pop ", "creature": "woman", "summary": "The track tells the story of a woman completely enamored with her new smart ring, tracking the \"magic\" of her biological data in real-time. From monitoring deep sleep scores to waving her hand for contactless payments, t", "prompt": "create a song about \"Smart Ring Magic\" where a woman wears a smart ring and gets excited by its features. Check out the best smart ring features online and make a song about her wearing a smart ring", "link": ""}, {"title": "The Red Path", "genre": "symphonic space folk", "creature": "elf, dragon rider", "summary": "the song tells the story of an elf rider guided across the iron sands of a desolate red world by a majestic dragon. Together, they navigate silent canyons and ancient stone paths to find their true home beyond the stars.", "prompt": "Make a song about a dragon in Mars, the way it discovers the planet with a woman elf rider. Genre : Symphonic Space Folk \u2014 orchestral swells + Celtic/elvish folk instrumentation (harp, flute) layered with ambient synth textures to evoke both \"fantasy\" and \"sci", "link": ""}, {"title": "Cut The Thin Air", "genre": "Epic orchestral folk", "creature": "Aurelia (elf rider), Copperwing (dragon)", "summary": "Fresh off landing on Mars, Aurelia and her dragon Copperwing spot the mouth of a colossal canyon and dive in on a dare, testing whether his broad wings can hold in Mars' thin air. The song is the rush of that first real ", "prompt": "Music: Epic orchestral folk with driving taiko drums and a soaring female vocal, building from a hushed intro into a triumphant chorus as the dragon dives into the canyon; strings mimic vertigo and windrush. || Image: Studio Ghibli-style cartoon - Copperwing, ", "link": ""}, {"title": "End Of The Map", "genre": "Progressive folk-rock", "creature": "Aurelia (elf rider), Copperwing (dragon)", "summary": "\"End of the Map\" tells the story of Aurelia and her stubborn dragon, Copperwing, who refuses to believe in a mountain taller than the sky until he climbs it himself. Musically, it\u2019s a slow-building progressive folk-rock ", "prompt": "Story: Aurelia hears of a mountain \"taller than any sky,\" and stubborn Copperwing refuses to believe it until he sees it himself. The song follows their slow, grueling climb up the solar system's largest volcano, his wings straining in thin air, until they cre", "link": ""}, {"title": "Wrap Me In", "genre": "Orchestral folk waltz", "creature": "Aurelia (elf rider), Copperwing (dragon)", "summary": "\"Wrap Me In\" is a turbulent 3/4 progressive house waltz driven by swirling staccato strings, heavy distorted synth gusts, and urgent, breathless vocals. The story centers on Aurelia and Copperwing braving a blinding oran", "prompt": "Story: A storm rolls in faster than either expects, swallowing the horizon in orange haze. Aurelia loses sight of the ground; Copperwing flies on instinct alone, curling his body around her to shield her from the grit. The song is about trust - surviving somet", "link": ""}, {"title": "Drifting Past", "genre": "Airy folk-pop", "creature": "Aurelia (elf rider), Copperwing (dragon)", "summary": "\"Drifting Past\" is a dreamy, weightless folk-pop breather track (95 BPM in E Major) featuring sparkling bell tones, lush self-harmonies, and soft synth pads. It captures the quiet relief and pure wonder of Aurelia and Co", "prompt": "Story: After the storm, exhausted Aurelia and Copperwing push higher, past the atmosphere entirely, drifting up to Mars' two small moons. Weightless for the first time, Aurelia lets go of the reins and floats free. A breather song, pure wonder after danger. ||", "link": ""}, {"title": "The Fire Is Over", "genre": "Ethereal folk ballad", "creature": "Aurelia (elf rider), Copperwing (dragon)", "summary": "\"The Fire Is Over\" is an ethereal, icy folk ballad (70 BPM) featuring hushed vocals, glass harmonica, and soft choir pads. It follows Aurelia and her dragon Copperwing as their scorching desert journey suddenly gives way", "prompt": "Story: Curious what lies at the ends of this red world, Aurelia guides Copperwing north until the ground turns white beneath his claws. Neither expected ice on a planet that's felt like fire and dust the whole journey. Quiet awe fills the song. || Music: Ether", "link": ""}, {"title": "I'd turn back", "genre": "Mysterious ancient folk", "creature": "Aurelia (elf rider), Copperwing (dragon)", "summary": "\"I'd Turn Back\" is a dark, ancient-sounding folk track about Aurelia and Copperwing exploring mysterious, half-buried alien pillars in the red sand. Driven by a mournful duduk, modal acoustic guitar, and low vocal chants", "prompt": "Story: Half-buried in a dune field, Aurelia and Copperwing find stone pillars that couldn't have grown there naturally. Someone - or something - was here before them. The song follows Aurelia's careful, lantern-lit exploration while wary Copperwing prowls behi", "link": ""}, {"title": "The Winner Shall Sit", "genre": "Folk-metal", "creature": "Aurelia (elf rider), Copperwing (dragon), rival obsidian dragon", "summary": "\"The Winner Shall Sit\" is a 120 BPM proto-doom metal anthem capturing a high-stakes aerial dogfight between Aurelia on Copperwing and a rival obsidian dragon above a Martian crater. Dual-harmonized guitars and call-and-r", "prompt": "Story: They're not alone - a jagged obsidian-black dragon rises from a crater to challenge Copperwing in the sky. The song is a duel, Aurelia clinging tight trying to keep her dragon from a fight neither can afford to lose. || Music: High-energy folk-metal hyb", "link": ""}, {"title": "The Lens is Open", "genre": "Acoustic folk-electronic", "creature": "Aurelia (elf rider), Copperwing (dragon), Mars rover", "summary": "Weary from conflict, Aurelia and Copperwing discover a lonely rover quietly logging Martian rocks, turning tension into a gentle, curious friendship. Warm acoustic fingerpicking paired with playful synth bleeps that mimi", "prompt": "Story: Exhausted from the standoff, Aurelia and Copperwing stumble on something stranger than any creature - a small wheeled machine quietly photographing rocks. A gentle, funny truce between the ancient and the mechanical. || Music: Gentle, curious tune blend", "link": ""}, {"title": "End Of The Night", "genre": "Atmospheric folk", "creature": "Aurelia (elf rider), Copperwing (dragon)", "summary": "\"The Deep Blue Seam\" tells the story of Aurelia and her dragon Copperwing breaking through a dry mountain passage to discover a glowing, bioluminescent underground lake\u2014bringing life-saving water to a desolate world. Mus", "prompt": "Story: Following an old instinct, Copperwing paws at a crack leading deep underground - and at the bottom, water, glowing faintly blue. After a journey of dust and fire, the song is relief at finding something this world needed all along. || Music: Atmospheric", "link": ""}, {"title": "The Red-Clay Earth", "genre": "Anthemic orchestral folk finale", "creature": "Aurelia (elf rider), Copperwing (dragon)", "summary": "Aurelia and Copperwing stand on a sunset cliff overlooking the canyons, storms, and ruins of their journey. \u2022 Theme: Moving past life as wandering strangers to claim Mars as their true, permanent home. ", "prompt": "Story: Canyon, volcano, storm, moons, ruins, a rival, a rover, an underground sea - every leg of the journey has led here. Standing on a cliff at sunset, Aurelia and Copperwing stop exploring Mars as strangers and start calling it home. || Music: Full anthemic", "link": "https://www.flowmusic.app/song/94ad6b85-f5ea-4382-a1fc-eb3f53b95191"}, {"title": "Where We Belong", "genre": "Warm folk-pop", "creature": "Aurelia (elf rider), Copperwing (dragon)", "summary": "Aurelia and her dragon, Copperwing, haul stones and light a campfire to build their first true resting place on a Martian cliffside. \u2022 Theme: A tender, domestic moment celebrating companionship, quiet routines, and final", "prompt": "Story: With Mars finally feeling like home, Aurelia and Copperwing choose a cliffside ledge to build their first resting place. Domestic and tender - Copperwing hauling stones while Aurelia arranges a fire pit, both settling into an unexpected rhythm. || Music", "link": "https://www.flowmusic.app/song/0f6e2596-8ec8-408e-896f-139447a2e97b"}, {"title": "A Lean Thing", "genre": "Folk-adventure", "creature": "Aurelia (elf rider), Copperwing (dragon), Martian sandcat", "summary": "The Discovery: Aurelia and Copperwing stumble upon soft, teardrop-shaped prints winding through the iron dust of Mars.\nThe Encounter: They lock eyes with a elusive, sand-colored feline before it quietly vanishes into a d", "prompt": "Story: Paw prints unlike anything they've seen lead Aurelia and Copperwing to their first native Martian animal - a lean, sand-colored feline that vanishes into burrows. Playful curiosity at realizing Mars has its own wildlife. || Music: Bouncy folk-adventure ", "link": ""}, {"title": "Hold The Note", "genre": "Ambient folk", "creature": "Aurelia (elf rider), Copperwing (dragon)", "summary": "This song blends ambient folk with deep sub-bass drones and fingerpicked acoustic guitar to capture the desolate beauty of a desert canyon. The narrative follows Aurelia as she realizes her dragon, Copperwing, can roar i", "prompt": "Story: Wind through canyon rock formations creates eerie natural harmony, and Copperwing discovers he can roar in matching pitch, making music with the landscape. Aurelia realizes her dragon has a voice all his own. || Music: Ambient folk with layered wind-ins", "link": ""}, {"title": "Garden Of Glass and Salt", "genre": "Lush tranquil folk", "creature": "Aurelia (elf rider), Copperwing (dragon)", "summary": "An old crater holds a secret: a shallow lake fed by ice melt, ringed with strange crystalline plant life. Aurelia swims for the first time on Mars while Copperwing wades along the shallows, both marveling that green thin", "prompt": "Story: An old crater holds a secret: a shallow lake fed by ice melt, ringed with strange crystalline plant life. Aurelia swims for the first time on Mars while Copperwing wades along the shallows, both marveling that green things can grow here. || Music: Lush,", "link": ""}, {"title": "The Wave Arrives", "genre": "Folk-electronic hybrid", "creature": "Aurelia (elf rider), Copperwing (dragon)", "summary": "Elf rider Aurelia uncovers a buried human radio transmitting a strange, rhythmic signal across the Martian sand. The Tension: Copperwing paces uneasily as the realization dawns: they aren't the first travelers to walk Ma", "prompt": "Story: During routine patrol, Aurelia, the elf rider woman picks up a strange rhythmic signal on an old human radio device buried in sand - proof she and her copper colored dragon Copperwing aren't the only visitors Mars has ever had. Tension and mystery, Copp", "link": "https://www.flowmusic.app/song/bfe96a7f-4325-4439-a6e8-7a05c279358e"}, {"title": "A Million Heavy Feet", "genre": "Sweeping folk-rock", "creature": "Aurelia (elf rider), Copperwing (dragon), migrating herd", "summary": "A driving folk-rock anthem capturing the awe of Mars's massive biannual animal migration. \u2022 Aurelia and Copperwing soar above red plains as a million horned creatures thunder below. \u2022 Galloping percussion and sweeping st", "prompt": "Story: Twice a year, herds of horned Martian creatures migrate across the northern plains. Aurelia and Copperwing fly alongside them for days, awed by the scale of life this \"empty\" planet actually holds. || Music: Sweeping, driving folk-rock with galloping pe", "link": ""}, {"title": "The Mountain is Awake", "genre": "Orchestral folk-rock", "creature": "Aurelia (elf rider), Copperwing (dragon)", "summary": "A dormant volcanic vent near Olympus Mons erupts on Mars, threatening the explorer colony for the first time. Aurelia the elf rider and her copper dragon Copperwing race low over glowing night lava flows to deliver a des", "prompt": "Story: A dormant vent near Olympus Mons stirs to life, and Aurelia and Copperwing race ahead of a lava flow to warn a nearby colony and get everyone to safety. Real danger - their home itself is threatened for the first time. || Music: Intense, driving orchest", "link": ""}];
+
+const SPACES = [
+  {title: "Mars Stage - Jul 2026", type: "space"},
+  {title: "Finding Mars", type: "playlist"},
+  {title: "Spanish Guitar Vibe", type: "playlist"},
+  {title: "This Is Nice", type: "playlist"},
+  {title: "TEST", type: "playlist"},
+  {title: "Garden Of Glass", type: "session"},
+  {title: "The Red Path", type: "session"},
+  {title: "The Mountain Is Awake", type: "session"},
+  {title: "A Million Heavy Feet", type: "session"}
+];
+
+const CREATORS = [
+  {handle: "energized_by_riffs", bio: "Uses Lyria to generate background music for games/interactive apps, and to create songs based on random stories and mythical creatures.", plays: "4.1k", followers: 45, songs: 107}
+];
+
+const LINKED = CATALOG.filter(s => s.link && s.link.length > 0);
+
+function norm(s){ return (s||"").toLowerCase(); }
+
+function subsequenceMatch(query, target){
+  query = norm(query); target = norm(target);
+  let qi = 0;
+  for (let i=0; i<target.length && qi<query.length; i++){
+    if (target[i] === query[qi]) qi++;
+  }
+  return qi === query.length;
+}
+
+function extractBPM(text){
+  const m = (text||"").match(/(\d{2,3})\s*BPM/i);
+  return m ? m[1] : null;
+}
+
+function genreTokens(genre){
+  if (!genre) return [];
+  return genre
+    .split(/[\/,&]|mixed with|blended with|combined with|fusion of|cross between|with a|infused with/gi)
+    .map(t => t.trim())
+    .filter(t => t.length > 2 && t.length < 34);
+}
+
+function scoreSong(song, q){
+  const query = norm(q);
+  const title = norm(song.title), genre = norm(song.genre), creature = norm(song.creature),
+        summary = norm(song.summary), prompt = norm(song.prompt);
+  if (!query) return {score:0, reason:null};
+  if (title.startsWith(query)) return {score:100, reason:"title match"};
+  if (title.includes(query)) return {score:85, reason:"title match"};
+  if (genre.includes(query)) return {score:65, reason:"genre / tag match"};
+  if (creature.includes(query)) return {score:55, reason:"character match"};
+  if (summary.includes(query) || prompt.includes(query)) return {score:45, reason:"description match"};
+  if (query.length >= 3 && subsequenceMatch(query, title)) return {score:25, reason:"fuzzy match"};
+  return {score:-1, reason:null};
+}
+
+function runCreatorSearch(q){
+  const query = q.trim();
+  const emptyEl = document.getElementById('creator-empty');
+  const resultsEl = document.getElementById('creator-results');
+  if (!query){
+    emptyEl.style.display = 'block';
+    resultsEl.style.display = 'none';
+    return;
+  }
+  emptyEl.style.display = 'none';
+  resultsEl.style.display = 'block';
+
+  const scored = CATALOG.map(s => ({...s, ...scoreSong(s, query)}))
+                        .filter(s => s.score >= 0)
+                        .sort((a,b) => b.score - a.score);
+
+  const matches = scored.slice(0, 6);
+  const top = matches.slice(0, 3);
+
+  // Quick chips
+  const chipSet = [];
+  const bpmSeen = new Set();
+  for (const m of matches){
+    const bpm = extractBPM(m.prompt);
+    if (bpm && !bpmSeen.has(bpm) && chipSet.length < 4){
+      chipSet.push("+ " + bpm + " BPM");
+      bpmSeen.add(bpm);
+    }
+  }
+  const genreSeen = new Set();
+  for (const m of matches){
+    for (const t of genreTokens(m.genre)){
+      const key = t.toLowerCase();
+      if (!genreSeen.has(key) && chipSet.length < 4){
+        chipSet.push("+ " + t);
+        genreSeen.add(key);
+      }
+      if (chipSet.length >= 4) break;
+    }
+    if (chipSet.length >= 4) break;
+  }
+  if (chipSet.length === 0){
+    chipSet.push("+ " + query[0].toUpperCase() + query.slice(1));
+  }
+
+  const chipsEl = document.getElementById('chips');
+  chipsEl.innerHTML = chipSet.map(c => `<span class="chip">${escapeHtml(c)}</span>`).join('');
+
+  // Prompt autocompletes
+  const promptsEl = document.getElementById('prompts');
+  if (top.length === 0){
+    promptsEl.innerHTML = `<div class="prow">No close catalog match yet — try a genre word (e.g. "folk-metal"), a mood (e.g. "witch"), or a character (e.g. "dragon").</div>`;
+  } else {
+    promptsEl.innerHTML = top.map(m => {
+      const genre = m.genre || "genre-bending";
+      const creature = m.creature || "a character from your world";
+      const summarySnippet = (m.summary || "").split('.')[0];
+      return `<div class="prow"><span class="tag">${escapeHtml(m.reason)}</span>Create a ${escapeHtml(genre)} track about ${escapeHtml(creature)} — ${escapeHtml(summarySnippet)}, in the style of '${escapeHtml(m.title)}'...</div>`;
+    }).join('');
+  }
+
+  // Structure / vocal hooks
+  const hooksEl = document.getElementById('hooks');
+  if (top.length === 0){
+    hooksEl.innerHTML = `<div class="hook">[Intro]\n[Verse 1] (start typing a theme to generate a lyric hook here)</div>`;
+  } else {
+    hooksEl.innerHTML = top.slice(0,2).map(m => {
+      const quoted = (m.prompt.match(/"([^"]{8,90})"/) || [])[1];
+      const line1 = quoted ? quoted : (m.summary || "").split('.')[0];
+      return `<div class="hook">[Intro]\n[Verse 1] ${escapeHtml(line1)}...</div>`;
+    }).join('');
+  }
+}
+
+function runListenerSearch(q){
+  const query = q.trim();
+  const emptyEl = document.getElementById('listener-empty');
+  const resultsEl = document.getElementById('listener-results');
+  if (!query){
+    emptyEl.style.display = 'block';
+    resultsEl.style.display = 'none';
+    return;
+  }
+  emptyEl.style.display = 'none';
+  resultsEl.style.display = 'block';
+
+  const scoredSongs = CATALOG.map(s => ({...s, ...scoreSong(s, query)}))
+                              .filter(s => s.score >= 0)
+                              .sort((a,b) => b.score - a.score)
+                              .slice(0, 6);
+
+  const songCountEl = document.getElementById('song-count');
+  songCountEl.textContent = scoredSongs.length ? scoredSongs.length + " match" + (scoredSongs.length===1?"":"es") : "";
+
+  const songEl = document.getElementById('song-results');
+  if (scoredSongs.length === 0){
+    songEl.innerHTML = `<div class="empty-state" style="text-align:left;padding-left:8px;">No song matches.</div>`;
+  } else {
+    songEl.innerHTML = scoredSongs.map(s => `
+      <div class="song-row">
+        <div class="thumb">&#127925;</div>
+        <div class="song-meta">
+          <div class="song-title">${escapeHtml(s.title)}</div>
+          <div class="song-sub">${escapeHtml(s.genre || 'Unspecified genre')}</div>
+        </div>
+        <div class="match-badge">${escapeHtml(s.reason)}</div>
+      </div>
+    `).join('');
+  }
+
+  const spaceMatches = SPACES.filter(s => norm(s.title).includes(norm(query)) || subsequenceMatch(query, s.title));
+  const spaceEl = document.getElementById('space-results');
+  if (spaceMatches.length === 0){
+    spaceEl.innerHTML = `<div class="empty-state" style="text-align:left;padding-left:8px;">No space or playlist matches.</div>`;
+  } else {
+    spaceEl.innerHTML = spaceMatches.map(s => `
+      <div class="space-row">
+        <div class="space-icon">${s.type === 'space' ? '&#127760;' : (s.type === 'session' ? '&#128337;' : '&#128194;')}</div>
+        <div class="song-meta">
+          <div class="song-title">${escapeHtml(s.title)}</div>
+          <div class="song-sub">${escapeHtml(s.type)}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  const creatorMatches = CREATORS.filter(c => norm(c.handle).includes(norm(query)) || norm(c.bio).includes(norm(query)));
+  const creatorEl = document.getElementById('creator-results-list');
+  if (creatorMatches.length === 0){
+    creatorEl.innerHTML = `<div class="empty-state" style="text-align:left;padding-left:8px;">No creator matches.</div>`;
+  } else {
+    creatorEl.innerHTML = creatorMatches.map(c => `
+      <div class="creator-row">
+        <div class="creator-icon">&#128100;</div>
+        <div class="song-meta">
+          <div class="song-title">@${escapeHtml(c.handle)}</div>
+          <div class="song-sub">${escapeHtml(c.plays)} plays · ${c.followers} followers · ${c.songs} songs</div>
+        </div>
+      </div>
+    `).join('');
+  }
+}
+
+function escapeHtml(str){
+  return (str||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+function debounce(fn, ms){
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
+const creatorInput = document.getElementById('creator-input');
+creatorInput.addEventListener('input', debounce(e => runCreatorSearch(e.target.value), 120));
+creatorInput.addEventListener('input', e => {
+  e.target.style.height = 'auto';
+  e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+});
+
+document.querySelectorAll('.try-term').forEach(el => {
+  el.addEventListener('click', () => {
+    creatorInput.value = el.textContent;
+    creatorInput.dispatchEvent(new Event('input'));
+    creatorInput.focus();
+  });
+});
+
+const listenerInput = document.getElementById('listener-input');
+listenerInput.addEventListener('input', debounce(e => runListenerSearch(e.target.value), 120));
+
+function applyTheme(choice){
+  document.documentElement.setAttribute('data-theme', choice);
+  document.querySelectorAll('.theme-opt').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.themeChoice === choice);
+  });
+  try { localStorage.setItem('flowmusic-theme', choice); } catch (e) { /* storage unavailable, ignore */ }
+}
+
+(function initTheme(){
+  let saved = null;
+  try { saved = localStorage.getItem('flowmusic-theme'); } catch (e) { /* storage unavailable, ignore */ }
+  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme(saved || (prefersDark ? 'dark' : 'light'));
+})();
+
+document.querySelectorAll('.theme-opt').forEach(btn => {
+  btn.addEventListener('click', () => applyTheme(btn.dataset.themeChoice));
+});
+
+const tabCreator = document.getElementById('tab-creator');
+const tabListener = document.getElementById('tab-listener');
+tabCreator.addEventListener('click', () => {
+  tabCreator.classList.add('active'); tabListener.classList.remove('active');
+  document.getElementById('mode-creator').style.display = 'block';
+  document.getElementById('mode-listener').style.display = 'none';
+});
+tabListener.addEventListener('click', () => {
+  tabListener.classList.add('active'); tabCreator.classList.remove('active');
+  document.getElementById('mode-listener').style.display = 'block';
+  document.getElementById('mode-creator').style.display = 'none';
+});
+</script>
+</body>
+</html>

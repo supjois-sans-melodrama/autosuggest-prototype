@@ -1,0 +1,46 @@
+Flow Music — Predictive Autosuggestion Prototype
+
+A working front-end prototype of Flow Music's real-time autosuggestion engine, covering both the **Creator Mode** ("Ask Producer" studio bar) and **Listener Mode** (global search) surfaces.
+
+## Tech stack
+
+- **Single self-contained HTML file** — no build step, no bundler, no package manager
+- **Vanilla JavaScript** — no framework, no external JS libraries
+- **Plain CSS** — custom properties (CSS variables) for theming, flexbox layout, no CSS framework
+- **Zero external requests** — no API calls, no CDN dependencies, nothing loads over the network at runtime
+
+This means the file runs identically whether opened directly from disk, served from GitHub Pages, or dropped into any static host.
+
+## Implementation
+
+**Data**: a 103-track reference catalog (title, genre, main character/creature, summary, prompt text, song link) is exported from the source spreadsheet to JSON and embedded directly in the page as a JS constant — no server or database.
+
+**Matching logic**: a lightweight, purely client-side scoring function ranks catalog entries against the live query using, in priority order:
+1. Title prefix match
+2. Title substring match
+3. Genre/tag substring match
+4. Character-name match (inside song summaries)
+5. Description/prompt substring match
+6. Subsequence-based fuzzy match (typo tolerance, e.g. `"gart"` → `"Garden..."`)
+
+Each result carries a `match_reason` label so the ranking logic is visible, not a black box.
+
+**Creator Mode** generates its three outputs live from whichever catalog entries currently match the query:
+- *Quick chips* — extracted BPM values (regex on prompt text) and split/deduped genre tokens from the top matches
+- *Prompt autocompletes* — templated sentences built from each match's genre, character, and summary
+- *Structure/vocal hooks* — quoted lyric lines pulled from prompt text where present, otherwise a generic `[Intro]/[Verse]` template
+
+**Listener Mode** runs the same scoring function against songs, plus small static arrays for Spaces/Playlists and Creator profiles (sourced from the product screenshots, since no catalog data existed for those).
+
+**Theming**: a Light/Dark toggle in the sidebar sets a `data-theme` attribute on `<html>`; all colors are CSS custom properties so the whole page reflows instantly. The choice is remembered per-browser via `localStorage`, with a `prefers-color-scheme` fallback on first load.
+
+## Known limitations
+
+- Matching is a demo heuristic, not the production ranking model
+- Only songs have real catalog data; Spaces/Playlists/Creators are static placeholders
+- No click-through actions (e.g. selecting a chip doesn't create a session) — this is a suggestion-surface demo only
+
+## Running locally
+
+Just open `index.html` in a browser. No install, no server required.
+
